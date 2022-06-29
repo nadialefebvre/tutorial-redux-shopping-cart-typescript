@@ -1,4 +1,9 @@
-import { createSlice, createAsyncThunk, createSelector, PayloadAction } from "@reduxjs/toolkit"
+import {
+  createSlice,
+  createAsyncThunk,
+  createSelector,
+  PayloadAction
+} from "@reduxjs/toolkit"
 import { checkout, CartItems } from "../../app/api"
 import type { RootState, AppDispatch } from "../../app/store"
 
@@ -15,7 +20,9 @@ const initialState: CartState = {
   errorMessage: ""
 }
 
-export const checkoutCart = createAsyncThunk("cart/checkout", async (items: CartItems) => {
+export const checkoutCart = createAsyncThunk("cart/checkout", async (_, thunkAPI) => {
+  const state = thunkAPI.getState() as RootState
+  const items = state.cart.items
   const response = await checkout(items)
   return response
 })
@@ -44,12 +51,21 @@ const cartSlice = createSlice({
     }
   },
   extraReducers: function (builder) {
-    builder.addCase(checkoutCart.pending, (state) => {
+    builder.addCase(checkoutCart.pending, state => {
       state.checkoutState = "LOADING"
     })
-    builder.addCase(checkoutCart.fulfilled, (state) => {
-      state.checkoutState = "READY"
-    })
+    builder.addCase(
+      checkoutCart.fulfilled,
+      (state, action: PayloadAction<{ success: boolean }>) => {
+        const { success } = action.payload
+        if (success) {
+          state.checkoutState = "READY"
+          state.items = {}
+        } else {
+          state.checkoutState = "ERROR"
+        }
+      }
+    )
     builder.addCase(checkoutCart.rejected, (state, action) => {
       state.checkoutState = "ERROR"
       state.errorMessage = action.error.message || ""
